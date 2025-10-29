@@ -34,7 +34,7 @@ The core MVP loop involves:
 ### 1. Clone the Repository (If applicable)
 
 ```bash
-git clone <https://github.com/Ladams537/personal-analytics.git>
+git clone https://github.com/Ladams537/personal-analytics.git
 cd personal-analytics # Or your project root folder name
 ```
 
