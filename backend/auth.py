@@ -1,45 +1,47 @@
 # /backend/auth.py
 
-from datetime import datetime, timedelta, timezone # Removed duplicate date
-from typing import Optional # Removed List as it's not used here
+from datetime import datetime, timedelta, timezone
+from typing import Optional
 from jose import JWTError, jwt
-from fastapi import HTTPException, Depends, APIRouter # <-- Import APIRouter
+from fastapi import HTTPException, Depends, APIRouter
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import uuid
 from schemas import UserLogin
 from database import get_db_connection
 import psycopg2
 from psycopg2.extras import DictCursor
-from core.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, pwd_context
+from core.config import (SECRET_KEY, ALGORITHM,
+                         ACCESS_TOKEN_EXPIRE_MINUTES, pwd_context)
 
 # --- Create Router Instance ---
 router = APIRouter(
-    prefix="/api/login", # Define prefix for all routes in this file
-    tags=["Authentication"] # Tag for API docs
+    prefix="/api/login",
+    tags=["Authentication"]
 )
 
+
 # --- HELPER FUNCTIONS ---
-# --- Helper function for password verification ---
 def verify_password(plain_password, hashed_password):
-    # Uses pwd_context imported from core.config
     return pwd_context.verify(plain_password, hashed_password)
 
-# --- Token Creation Function ---
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+                              minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# --- Security Scheme ---
+
 oauth2_scheme = HTTPBearer()
 
-# --- Get Current User Function ---
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_scheme)):
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials =
+                           Depends(oauth2_scheme)):
     token = credentials.credentials
     credentials_exception = HTTPException(
         status_code=401,
@@ -57,8 +59,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(o
     except ValueError:
         raise credentials_exception
 
+
 # --- User login endpoint ---
-# Use the router instance and correct path
 @router.post("")
 def login_user(credentials: UserLogin):
     print("\n--- 1. login_user endpoint called ---")
@@ -67,24 +69,29 @@ def login_user(credentials: UserLogin):
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=DictCursor)
-        cur.execute("SELECT user_id, email, password_hash FROM users WHERE email = %s;", (credentials.email,))
+        cur.execute("SELECT user_id, email, password_hash \
+                    FROM users WHERE email = %s;",
+                    (credentials.email,))
         user = cur.fetchone()
 
-        # Close cursor and connection earlier if user not found
         if not user:
-            if cur: cur.close()
-            if conn: conn.close()
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Verify password BEFORE closing connection entirely
         if not verify_password(credentials.password, user["password_hash"]):
-            if cur: cur.close()
-            if conn: conn.close()
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
             raise HTTPException(status_code=400, detail="Invalid credentials")
 
-        # Now close remaining resources after successful verification
-        if cur: cur.close()
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
 
         print("--- 6. Login successful, creating token ---")
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -96,17 +103,25 @@ def login_user(credentials: UserLogin):
 
     except psycopg2.Error as e:
         print(f"\n--- !!! DATABASE ERROR: {e} !!! ---")
-        if cur: cur.close() # Ensure cursor is closed on error too
-        if conn: conn.close()
-        raise HTTPException(status_code=500, detail="Database connection error.") # More generic error
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+        raise HTTPException(status_code=500,
+                            detail="Database connection error.")
 
-    except HTTPException as e: # Re-raise HTTP exceptions
-         if cur: cur.close()
-         if conn: conn.close()
-         raise e
+    except HTTPException as e:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+        raise e
 
     except Exception as e:
         print(f"\n--- !!! UNEXPECTED ERROR: {e} !!! ---")
-        if cur: cur.close()
-        if conn: conn.close()
-        raise HTTPException(status_code=500, detail="An unexpected server error occurred.")
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+        raise HTTPException(status_code=500,
+                            detail="An unexpected server error occurred.")

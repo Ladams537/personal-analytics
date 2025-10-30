@@ -1,10 +1,9 @@
-#main backend file bringing API calls and logic together
-#/backend/main.py
+# /backend/main.py
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import users, onboarding, checkins, routines, goals, dashboard
-import auth 
+import auth
 
 
 app = FastAPI()

@@ -1,5 +1,4 @@
-#API calls for handling the goals of the user
-#/backend/routers/goals.py
+# /backend/routers/goals.py
 
 import uuid
 import psycopg2
@@ -12,16 +11,18 @@ from fastapi import APIRouter
 from auth import get_current_user
 
 router = APIRouter(
-    prefix="/api/goals", # Optional: Define prefix for all routes in this file
-    tags=["Goals"]       # Optional: Tag for API docs
+    prefix="/api/goals",
+    tags=["Goals"]
 )
+
 
 @router.patch("/today")
 async def update_todays_top_goal(
-    update_data: TopGoalUpdate, # Get the new status from the request body
-    current_user_id: uuid.UUID = Depends(get_current_user) # Get user from token
+    update_data: TopGoalUpdate,
+    current_user_id: uuid.UUID = Depends(get_current_user)
 ):
-    print(f"\n--- 1. update_todays_top_goal called for user: {current_user_id} ---")
+    print(f"\n--- 1. update_todays_top_goal called for user: \
+          {current_user_id} ---")
     today = date.today()
     conn = None
     cur = None
@@ -35,32 +36,41 @@ async def update_todays_top_goal(
             UPDATE top_goal
             SET is_completed = %s
             WHERE user_id = %s AND goal_date = %s
-            RETURNING goal_id; -- Return the ID to confirm update happened
+            RETURNING goal_id;
         """
-        print(f"--- 4. Executing update for date {today}, status {update_data.is_completed} ---")
-        cur.execute(update_sql, (update_data.is_completed, current_user_id, today))
+        print(f"--- 4. Executing update for date {today}, \
+              status {update_data.is_completed} ---")
+        cur.execute(update_sql,
+                    (update_data.is_completed, current_user_id, today))
 
-        updated_goal = cur.fetchone() # Check if any row was updated
+        updated_goal = cur.fetchone()
 
         if updated_goal:
             conn.commit()
             print("--- Update committed ---")
             return {"status": "success", "message": "Top goal status updated."}
         else:
-            # No goal found for today, maybe rollback isn't needed but good practice
-            if conn: conn.rollback()
+            if conn:
+                conn.rollback()
             print("--- No top goal found for today to update ---")
-            raise HTTPException(status_code=404, detail="No top goal found for today.")
+            raise HTTPException(status_code=404,
+                                detail="No top goal found for today.")
 
     except psycopg2.Error as db_error:
         print(f"DB Error: {db_error}")
-        if conn: conn.rollback()
-        raise HTTPException(status_code=500, detail="Database error updating goal.")
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500,
+                            detail="Database error updating goal.")
     except Exception as e:
         print(f"Unexpected Error: {e}")
-        if conn: conn.rollback()
-        raise HTTPException(status_code=500, detail="An unexpected server error occurred.")
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500,
+                            detail="An unexpected server error occurred.")
     finally:
-        if cur: cur.close()
-        if conn: conn.close()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
         print("--- Connection closed ---")
