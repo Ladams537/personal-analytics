@@ -36,7 +36,11 @@
 					localStorage.setItem('accessToken', result.access_token);
 					console.log('Token stored in localStorage');
 					alert('Login successful!');
-					goto('/'); // Redirect to the dashboard
+					if (result.onboarding_complete) {
+						goto('/dashboard'); // Redirect to the dashboard
+					} else {
+						goto('/onboarding/personality'); // Redirect to personality onboarding which then redirects to principles onboarding
+					}
 				} else {
 					console.error('Token not found in response');
 					errorMessage = 'Login succeeded but token was missing.';
