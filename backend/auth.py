@@ -64,41 +64,61 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials =
 @router.post("")
 def login_user(credentials: UserLogin):
     print("\n--- 1. login_user endpoint called ---")
+    print(f"    - Attempting login for email: {credentials.email}")
+
     conn = None
     cur = None
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=DictCursor)
-        cur.execute("SELECT user_id, email, password_hash \
-                    FROM users WHERE email = %s;",
-                    (credentials.email,))
+
+        sql = "SELECT user_id, email, \
+               password_hash FROM users WHERE email = %s;"
+        print(f"--- 2. Executing SQL: \
+               {sql} with param: {credentials.email} ---")
+
+        cur.execute(sql, (credentials.email,))
         user = cur.fetchone()
 
         if not user:
+            print("--- 3. SQL RESULT: User not found in database ---")
             if cur:
                 cur.close()
             if conn:
                 conn.close()
             raise HTTPException(status_code=404, detail="User not found")
 
+        print(f"--- 3. SQL RESULT: Found user record: {dict(user)} ---")
+
+        # Verify the password
         if not verify_password(credentials.password, user["password_hash"]):
+            print("--- 4. Password verification FAILED ---")
             if cur:
                 cur.close()
             if conn:
                 conn.close()
             raise HTTPException(status_code=400, detail="Invalid credentials")
 
+        print("--- 4. Password verification SUCCESSFUL ---")
+
         if cur:
             cur.close()
         if conn:
             conn.close()
 
-        print("--- 6. Login successful, creating token ---")
+        print("--- 5. Connection closed ---")
+
+        # --- Create JWT Token ---
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         token_data = {"sub": str(user["user_id"])}
+
+        print(f"--- 6. Creating token with user_id: {user['user_id']} ---")
+
         access_token = create_access_token(
             data=token_data, expires_delta=access_token_expires
         )
+
+        print(f"--- 7. Returning access token: {access_token} ---")
         return {"access_token": access_token, "token_type": "bearer"}
 
     except psycopg2.Error as e:

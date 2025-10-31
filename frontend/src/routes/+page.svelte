@@ -23,12 +23,16 @@
 
 		try {
 			// --- Include the token in the fetch request ---
-			const response = await fetch('http://localhost:8000/api', { // Removed user ID from URL
+			// Create a unique value based on the current time
+            const cacheBuster = new Date().getTime();
+            
+            // Add the unique value as a query parameter (e.g., ?_=[timestamp])
+            const response = await fetch(`http://localhost:8000/api?_=${cacheBuster}`, {
 				method: 'GET',
 				headers: {
-					// Add the Authorization header
 					'Authorization': `Bearer ${token}`
-				}
+				},
+				cache: 'no-store' // Keep this for good measure
 			});
 			// ------------------------------------------
 

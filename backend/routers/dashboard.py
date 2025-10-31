@@ -1,12 +1,12 @@
 # /backend/routers/dashboard.py
 
-from fastapi import APIRouter, HTTPException, Depends
-from database import get_db_connection
+import uuid
 import psycopg2
+from typing import Dict, Any
 from psycopg2.extras import DictCursor
 from auth import get_current_user
-import uuid
-
+from fastapi import APIRouter, HTTPException, Depends
+from database import get_db_connection
 
 router = APIRouter(
     prefix="/api",
@@ -45,11 +45,13 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
           {current_user_id} ---")
     conn = None
     cur = None
-    dashboard_data = {
+
+    dashboard_data: Dict[str, Any] = {
         "latest_checkin": None,
         "top_goal": None,
         "daily_metrics": []
     }
+
     try:
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=DictCursor)
@@ -77,7 +79,7 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
             cur.execute(metrics_sql, (latest_checkin_id,))
             metrics_rows = cur.fetchall()
             dashboard_data["daily_metrics"] = \
-                          [dict(row) for row in metrics_rows]
+                [dict(row) for row in metrics_rows]
 
             target_date = latest_checkin["checkin_date"]
             goal_sql = """
@@ -89,6 +91,7 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
             top_goal = cur.fetchone()
             if top_goal:
                 dashboard_data["top_goal"] = dict(top_goal)
+
         return dashboard_data
 
     except psycopg2.Error as db_error:
