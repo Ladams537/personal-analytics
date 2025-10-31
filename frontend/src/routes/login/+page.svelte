@@ -37,7 +37,7 @@
 					console.log('Token stored in localStorage');
 					alert('Login successful!');
 					if (result.onboarding_complete) {
-						goto('/dashboard'); // Redirect to the dashboard
+						goto('/'); // Redirect to the dashboard
 					} else {
 						goto('/onboarding/personality'); // Redirect to personality onboarding which then redirects to principles onboarding
 					}

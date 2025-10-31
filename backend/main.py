@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import users, onboarding, checkins, routines, goals, dashboard
+from routers import onboarding, checkins, routines, goals, dashboard
 import auth
 
 
@@ -21,7 +21,6 @@ app.add_middleware(
 
 
 app.include_router(auth.router)
-app.include_router(users.router)
 app.include_router(onboarding.router)
 app.include_router(checkins.router)
 app.include_router(routines.router)

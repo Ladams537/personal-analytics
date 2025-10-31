@@ -4,6 +4,7 @@
     let displayName = '';
     let email = '';
     let password = '';
+    let errorMessage = '';
 
     async function handleSubmit() {
         // The data to send to the backend
@@ -14,7 +15,6 @@
         };
 
         try {
-            // Use the browser's fetch API to make the request
             const response = await fetch('http://localhost:8000/api/users', {
                 method: 'POST',
                 headers: {
@@ -27,7 +27,17 @@
                 const result = await response.json();
                 console.log('Success:', result);
                 alert('User created successfully!');
-                goto('/login');
+
+                if (result.access_token) {
+                    // 1. Store the new token
+                    localStorage.setItem('accessToken', result.access_token);
+                    console.log('Token stored in localStorage');
+                    
+                    // 2. Redirect to onboarding
+                    goto('/onboarding/personality');
+                } else {
+                    errorMessage = "Registration succeeded but no token was returned.";
+                }
             } else {
                 // Handle server errors (e.g., 500 Internal Server Error)
                 const errorResult = await response.json();
@@ -45,6 +55,10 @@
 <main>
     <h1>Create an Account</h1>
     <form on:submit|preventDefault={handleSubmit}>
+        {#if errorMessage}
+            <p class="error">{errorMessage}</p>
+        {/if}
+
         <div>
             <label for="displayName">Display Name</label>
             <input type="text" id="displayName" bind:value={displayName} required />
@@ -59,6 +73,7 @@
         </div>
         <button type="submit">Register</button>
     </form>
+    <p>Already have an account? <a href="/login">Login here</a></p>
 </main>
 
 <style>
@@ -79,4 +94,18 @@
         padding: 8px;
         box-sizing: border-box;
     }
+    .error {
+        color: red;
+        margin-top: 1rem;
+    }
+    p {
+        margin-top: 1rem;
+    }
+    a {
+		color: #007bff;
+		text-decoration: none;
+	}
+	a:hover {
+		text-decoration: underline;
+	}
 </style>
