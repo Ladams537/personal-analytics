@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import Button from '$lib/components/atomic/Button.svelte';
+	import { api } from '$lib/services/api';
 
 	type Principle = {
 		principle_id: string;
@@ -9,33 +11,23 @@
 	};
 
 	let allPrinciples: Principle[] = [];
-	let selectedPrinciples: Map<string, number> = new Map(); // Map<principle_id, rank>
+	let selectedPrinciples: Map<string, number> = new Map();
 	let isLoading = true;
 	let errorMessage = '';
+	let isSubmitting = false;
 
-	// Fetch available principles when the page loads
-    onMount(async () => {
-		const token = localStorage.getItem('accessToken');
-		if (!token) {
-			goto('/login');
-			return;
+	onMount(async () => {
+		isLoading = true;
+		errorMessage = '';
+		try {
+			// Use the new api.get function
+			allPrinciples = await api.get('/api/principles');
+		} catch (error: any) {
+			errorMessage = error.message || 'Network error loading principles.';
+		} finally {
+			isLoading = false;
 		}
-        try {
-            const response = await fetch('http://localhost:8000/api/principles',
-				{ headers: { Authorization: `Bearer ${token}` } }
-			);
-            if (response.ok) {
-                allPrinciples = await response.json();
-                console.log('Fetched Principles:', allPrinciples); // <-- ADD THIS LINE
-            } else {
-                errorMessage = 'Failed to load principles.';
-            }
-        } catch (error) {
-            errorMessage = 'Network error loading principles.';
-        } finally {
-            isLoading = false;
-        }
-    });
+	});
 
 	// Handle checkbox changes
 	function toggleSelection(principleId: string, checked: boolean) {
@@ -66,39 +58,31 @@
 
 	async function handleSubmit() {
 		console.log('Submitting selected principles...');
+		isSubmitting = true;
+		errorMessage = '';
 
 		const payloadPrinciples = Array.from(selectedPrinciples.entries()).map(([id, rank]) => ({
 			principle_id: id,
 			rank: rank
 		}));
 
+		// We no longer send user_id, the token handles it
 		const payload = {
 			principles: payloadPrinciples
 		};
 
-		console.log('Principles Payload:', JSON.stringify(payload, null, 2));
-
 		try {
-			const token = localStorage.getItem('accessToken');
-			const response = await fetch('http://localhost:8000/api/onboarding/principles', {
-				method: 'POST',
-				headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload)
-			});
-
-			if (response.ok) {
-				console.log('User principles saved.');
-				alert('Onboarding complete!');
-				// Optionally update user onboarding status here or on backend
-				goto('/'); // Go to the main dashboard
-			} else {
-				const errorResult = await response.json();
-				alert(`Error saving principles: ${errorResult.detail || 'Unknown error'}`);
-				console.error('Principle save error:', errorResult);
-			}
-		} catch (error) {
-			alert('Network error saving principles.');
-			console.error('Network error:', error);
+			// Use the new api.post function
+			await api.post('/api/onboarding/principles', payload);
+			
+			console.log('User principles saved.');
+			alert('Onboarding complete!');
+			goto('/'); // Go to the main dashboard
+		} catch (error: any) {
+			errorMessage = `Error saving principles: ${error.message}`;
+			console.error('Principle save error:', error);
+		} finally {
+			isSubmitting = false;
 		}
 	}
 </script>
@@ -134,7 +118,7 @@
 			{/each}
 
 			{#if selectedPrinciples.size > 0}
-				<button type="submit">Complete Onboarding</button>
+				<Button type="submit" fullWidth={true}>Complete Onboarding</Button>
 			{/if}
 		</form>
 	{/if}
@@ -174,19 +158,5 @@
 		color: #666;
 		margin-top: 0.3rem;
 		margin-left: 1.8rem; /* Align with label text */
-	}
-	button {
-		width: 100%;
-		padding: 10px;
-		background-color: #5cb85c;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 1rem;
-		margin-top: 1.5rem;
-	}
-	button:hover {
-		background-color: #4cae4c;
 	}
 </style>

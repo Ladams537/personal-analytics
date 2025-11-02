@@ -1,68 +1,49 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte'; // Import onMount if not already there
+	import { onMount } from 'svelte';
+	import Button from '$lib/components/atomic/Button.svelte';
+	import { api } from '$lib/services/api';
 
 	let email = '';
 	let password = '';
-	let errorMessage = ''; // To display errors on the page
+	let errorMessage = '';
+	let isLoading = false;
 
-	// Optional: Check if user is already logged in on page load
 	onMount(() => {
 		const token = localStorage.getItem('accessToken');
 		if (token) {
-			// Optional: Verify token validity here if needed
-			console.log('User already logged in, redirecting...');
 			goto('/'); // Redirect to dashboard if already logged in
 		}
 	});
 
 	async function handleSubmit() {
-		errorMessage = ''; // Clear previous errors
+		errorMessage = '';
+		isLoading = true;
 		const credentials = { email, password };
 
 		try {
-			const response = await fetch('http://localhost:8000/api/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(credentials)
-			});
+			// Use the new api.post function
+			const result = await api.post('/api/login', credentials);
+			console.log('Login Success:', result);
 
-			if (response.ok) {
-				const result = await response.json();
-				console.log('Login Success:', result);
+			if (result.access_token) {
+				localStorage.setItem('accessToken', result.access_token);
+				console.log('Token stored in localStorage');
 
-				// --- STORE THE TOKEN ---
-				if (result.access_token) {
-					localStorage.setItem('accessToken', result.access_token);
-					console.log('Token stored in localStorage');
-					alert('Login successful!');
-					if (result.onboarding_complete) {
-						goto('/'); // Redirect to the dashboard
-					} else {
-						goto('/onboarding/personality'); // Redirect to personality onboarding which then redirects to principles onboarding
-					}
+				// Redirect based on onboarding status
+				if (result.onboarding_complete) {
+					goto('/'); // Redirect to the dashboard
 				} else {
-					console.error('Token not found in response');
-					errorMessage = 'Login succeeded but token was missing.';
+					goto('/onboarding/personality');
 				}
-				// -----------------------
-
 			} else {
-				let errorMsg = 'Login failed.';
-				try {
-					const errorResult = await response.json();
-					errorMsg = errorResult.detail || JSON.stringify(errorResult);
-				} catch (parseError) {
-					errorMsg = await response.text() || `HTTP Error ${response.status}`;
-				}
-				console.error('Login Error:', errorMsg);
-				errorMessage = `Login failed: ${errorMsg}`; // Show error on page
-				// alert(`Login failed: ${errorMsg}`); // Can remove alert if showing on page
+				errorMessage = 'Login succeeded but token was missing.';
 			}
-		} catch (error) {
-			console.error('Network error:', error);
-			errorMessage = 'A network error occurred. Please try again.';
-			// alert('A network error occurred. Please try again.'); // Can remove alert
+		} catch (error: any) {
+			console.error('Login Error:', error);
+			errorMessage = `Login failed: ${error.message}`;
+		} finally {
+			isLoading = false;
 		}
 	}
 </script>
@@ -83,7 +64,7 @@
 			<p class="error">{errorMessage}</p>
 		{/if}
 
-		<button type="submit">Login</button>
+		<Button type="submit" fullWidth={true}>Login</Button>
 	</form>
 	<p>Don't have an account? <a href="/register">Register here</a></p>
 </main>

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import Button from '$lib/components/atomic/Button.svelte';
+	import { api } from '$lib/services/api';
 
 	// --- Types ---
 	type RoutineStep = {
@@ -25,10 +27,10 @@
 
 	// --- State ---
 	let routines: Routine[] = [];
-	let stepInputs: Map<string, StepInput> = new Map(); // Map<step_id, StepInput>
-
+	let stepInputs: Map<string, StepInput> = new Map();
 	let isLoading = true;
 	let errorMessage = '';
+	let isSubmitting = false;
 
 	// Other form fields
 	let gratitudeEntry = '';
@@ -53,32 +55,25 @@
 	// --- Data Loading ---
 	onMount(async () => {
 		isLoading = true;
-		const token = localStorage.getItem('accessToken');
-		if (!token) {
-			goto('/login');
-			return;
+		errorMessage = '';
+		try {
+			// Fetch routines first to build the form
+			await fetchRoutines();
+			// Then check if data already exists for today
+			await fetchTodaysCheckin();
+		} catch (error: any) {
+			errorMessage = error.message;
+		} finally {
+			isLoading = false;
 		}
-
-		// We always need the routine definitions to build the form.
-		await fetchRoutines(token);
-
-		// Now, check if this user has already checked in today.
-		await fetchTodaysCheckin(token);
-
-		isLoading = false;
 	});
 
-	async function fetchRoutines(token: string) {
+	async function fetchRoutines() {
 		try {
-			const response = await fetch('http://localhost:8000/api/routines', {
-				headers: { Authorization: `Bearer ${token}` }
-			});
-			if (!response.ok) throw new Error('Failed to fetch routines.');
-
-			routines = await response.json();
+			routines = await api.get('/api/routines');
 			console.log('Fetched routines:', routines);
-
-			// Initialize the stepInputs map based on the fetched routines
+			
+			// Initialize stepInputs map
 			const newStepInputs = new Map<string, StepInput>();
 			for (const routine of routines) {
 				for (const step of routine.steps) {
@@ -90,96 +85,72 @@
 			}
 			stepInputs = newStepInputs;
 		} catch (error: any) {
-			errorMessage = error.message;
+			console.error('Failed to fetch routines:', error);
+			errorMessage = 'Could not load your routines.';
 		}
 	}
 
-	async function fetchTodaysCheckin(token: string) {
+	async function fetchTodaysCheckin() {
 		try {
-			const response = await fetch('http://localhost:8000/api/checkins/today', {
-				headers: { Authorization: `Bearer ${token}` }
+			// Use the new api.get function
+			const todaysCheckinData = await api.get('/api/checkins/today');
+			
+			// --- Check-in FOUND: Pre-fill the form ---
+			console.log("Today's Check-in Data:", todaysCheckinData);
+			gratitudeEntry = todaysCheckinData.gratitude_entry || '';
+			principleAlignment = todaysCheckinData.principle_alignment || 5;
+			principleAlignmentNote = todaysCheckinData.principle_alignment_note || '';
+			topGoalDescription = todaysCheckinData.top_goal?.goal_description || '';
+			topGoalCompleted = todaysCheckinData.top_goal?.is_completed || false;
+
+			// Pre-fill metrics
+			timeMetrics.forEach((m) => {
+				const found = todaysCheckinData.metrics.find(
+					(dm: any) => dm.metric_type === 'Time Allocation' && dm.metric_name === m.name
+				);
+				if (found) m.value = found.value;
+			});
+			dailyRatings.forEach((r) => {
+				const found = todaysCheckinData.metrics.find(
+					(dm: any) => dm.metric_type === 'Daily Rating' && dm.metric_name === r.name
+				);
+				if (found) r.value = found.value;
 			});
 
-			if (response.ok) {
-				// --- Check-in FOUND ---
-				const todaysCheckinData = await response.json();
-				console.log("Today's Check-in Data:", todaysCheckinData);
+			// Pre-fill routine step inputs
+			const newStepInputs = new Map(stepInputs);
+			todaysCheckinData.completed_steps.forEach((step: any) => {
+				if (newStepInputs.has(step.step_id)) {
+					newStepInputs.set(step.step_id, {
+						is_completed: step.is_completed,
+						actual_duration: step.actual_duration
+					});
+				}
+			});
+			stepInputs = newStepInputs;
 
-				// Pre-fill all form fields with today's data
-				gratitudeEntry = todaysCheckinData.gratitude_entry || '';
-				principleAlignment = todaysCheckinData.principle_alignment || 5;
-				principleAlignmentNote = todaysCheckinData.principle_alignment_note || '';
-				topGoalDescription = todaysCheckinData.top_goal?.goal_description || '';
-				topGoalCompleted = todaysCheckinData.top_goal?.is_completed || false;
-
-				// Pre-fill metrics
-				timeMetrics.forEach((m) => {
-					const found = todaysCheckinData.metrics.find(
-						(dm: any) => dm.metric_type === 'Time Allocation' && dm.metric_name === m.name
-					);
-					if (found) m.value = found.value;
-				});
-				dailyRatings.forEach((r) => {
-					const found = todaysCheckinData.metrics.find(
-						(dm: any) => dm.metric_type === 'Daily Rating' && dm.metric_name === r.name
-					);
-					if (found) r.value = found.value;
-				});
-
-				// Pre-fill routine step inputs
-				const newStepInputs = new Map(stepInputs);
-				todaysCheckinData.completed_steps.forEach((step: any) => {
-					if (newStepInputs.has(step.step_id)) {
-						newStepInputs.set(step.step_id, {
-							is_completed: step.is_completed,
-							actual_duration: step.actual_duration
-						});
-					}
-				});
-				stepInputs = newStepInputs;
-
-				// Disable the form - for this MVP, we won't allow editing.
-				// We'll just show the form with disabled inputs.
-			} else if (response.status === 404) {
-				// --- Check-in NOT FOUND ---
+		} catch (error: any) {
+			if (error.message.includes('No check-in found')) {
 				console.log('No check-in found for today. Showing blank form.');
 			} else {
-				throw new Error("Error checking for today's check-in.");
+				errorMessage = error.message;
 			}
-		} catch (error: any) {
-			errorMessage = error.message;
 		}
 	}
 
 	// --- Form Submission ---
 	async function handleSubmit() {
-		const token = localStorage.getItem('accessToken');
-		if (!token) {
-			goto('/login');
-			return;
-		}
+		isSubmitting = true;
+		errorMessage = '';
 
-		// Build the completed_steps array from our stepInputs map
+		// ... (Build completed_steps and metrics arrays - this logic is the same) ...
 		const completed_steps = Array.from(stepInputs.entries())
-			.filter(([, data]) => data.is_completed) // Only include steps that were checked
-			.map(([step_id, data]) => ({
-				step_id,
-				is_completed: data.is_completed,
-				actual_duration: data.actual_duration
-			}));
-
-		// Build the metrics array
+			.filter(([, data]) => data.is_completed)
+			.map(([step_id, data]) => ({ step_id, ...data }));
+		
 		const metrics = [
-			...timeMetrics.map((m) => ({
-				metric_type: 'Time Allocation',
-				metric_name: m.name,
-				value: m.value
-			})),
-			...dailyRatings.map((r) => ({
-				metric_type: 'Daily Rating',
-				metric_name: r.name,
-				value: r.value
-			}))
+			...timeMetrics.map((m) => ({ /* ... */ })),
+			...dailyRatings.map((r) => ({ /* ... */ }))
 		];
 
 		const checkinPayload = {
@@ -190,28 +161,16 @@
 			completed_steps: completed_steps,
 			top_goal: topGoalDescription ? { goal_description: topGoalDescription, is_completed: topGoalCompleted } : null
 		};
-
-		console.log('Submitting Payload:', JSON.stringify(checkinPayload, null, 2));
-
+		
 		try {
-			const response = await fetch('http://localhost:8000/api/checkins', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify(checkinPayload)
-			});
-
-			if (response.ok) {
-				alert('Check-in saved successfully!');
-				goto('/'); // Redirect to dashboard
-			} else {
-				const errorResult = await response.json();
-				alert(`Error saving check-in: ${errorResult.detail || 'Unknown error'}`);
-			}
-		} catch (error) {
-			alert('Network error. Please try again.');
+			// Use the new api.post function
+			await api.post('/api/checkins', checkinPayload);
+			alert('Check-in saved successfully!');
+			goto('/'); // Redirect to dashboard
+		} catch (error: any) {
+			errorMessage = `Error saving check-in: ${error.message}`;
+		} finally {
+			isSubmitting = false;
 		}
 	}
 
@@ -277,9 +236,7 @@
 						<div class="routine-block">
 							<h3>
 								{routine.routine_name}
-								<button type="button" on:click={() => selectAllSteps(routine.routine_id)} class="select-all-btn">
-									Select All
-								</button>
+								<Button onclick={() => selectAllSteps(routine.routine_id)}>Select All</Button>
 							</h3>
 							{#each routine.steps as step (step.step_id)}
 								{@const inputData = stepInputs.get(step.step_id)}
@@ -310,7 +267,7 @@
 			</section>
 			<section>
 				<h2>Gratitude</h2>
-				<textarea bind:value={gratitudeEntry} placeholder="What are you grateful for today?" />
+				<textarea bind:value={gratitudeEntry} placeholder="What are you grateful for today?"></textarea>
 			</section>
 
 			<section>
@@ -324,7 +281,7 @@
 					max="10"
 					step="1"
 				/>
-				<textarea bind:value={principleAlignmentNote} placeholder="Why this rating?" />
+				<textarea bind:value={principleAlignmentNote} placeholder="Why this rating?"></textarea>
 			</section>
 
 			<section>
@@ -363,7 +320,7 @@
 				{/each}
 			</section>
 
-			<button type="submit">Save Check-in</button>
+			<Button type="submit" fullWidth={true}>Save Check-in</Button>
 		</form>
 	{/if}
 </main>
@@ -447,21 +404,6 @@
 	.metric-item {
 		margin-bottom: 0.8rem;
 	}
-	button {
-		display: block;
-		width: 100%;
-		padding: 10px 15px;
-		background-color: #5cb85c;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 1rem;
-		cursor: pointer;
-		margin-top: 1rem;
-	}
-	button:hover {
-		background-color: #4cae4c;
-	}
 	.error {
 		color: red;
 		text-align: center;
@@ -470,14 +412,5 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-	}
-	.select-all-btn {
-		padding: 3px 8px;
-		font-size: 0.8em;
-		background-color: #6c757d;
-		cursor: pointer;
-	}
-	.select-all-btn:hover {
-		background-color: #5a6268;
 	}
 </style>

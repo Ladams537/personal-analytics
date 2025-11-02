@@ -1,55 +1,46 @@
-<script>
-	import { goto } from "$app/navigation";
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import Button from '$lib/components/atomic/Button.svelte';
+	import { api } from '$lib/services/api';
 
-    let displayName = '';
-    let email = '';
-    let password = '';
-    let errorMessage = '';
+	let displayName = '';
+	let email = '';
+	let password = '';
+	let errorMessage = '';
+	let isLoading = false;
 
-    async function handleSubmit() {
-        // The data to send to the backend
-        const userData = {
-            display_name: displayName,
-            email: email,
-            password: password
-        };
+	async function handleSubmit() {
+		errorMessage = '';
+		isLoading = true;
+		const userData = {
+			display_name: displayName,
+			email: email,
+			password: password
+		};
 
-        try {
-            const response = await fetch('http://localhost:8000/api/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(userData)
-            });
+		try {
+			// Use the new api.post function
+			const result = await api.post('/api/users', userData);
+			console.log('Success:', result);
 
-            if (response.ok) {
-                const result = await response.json();
-                console.log('Success:', result);
-                alert('User created successfully!');
-
-                if (result.access_token) {
-                    // 1. Store the new token
-                    localStorage.setItem('accessToken', result.access_token);
-                    console.log('Token stored in localStorage');
-                    
-                    // 2. Redirect to onboarding
-                    goto('/onboarding/personality');
-                } else {
-                    errorMessage = "Registration succeeded but no token was returned.";
-                }
-            } else {
-                // Handle server errors (e.g., 500 Internal Server Error)
-                const errorResult = await response.json();
-                console.error('Error:', errorResult);
-                alert(`Error creating user: ${errorResult.message}`);
-            }
-        } catch (error) {
-            // Handle network errors
-            console.error('Network error:', error);
-            alert('A network error occurred. Please try again.');
-        }
-    }
+			if (result.access_token) {
+				// 1. Store the new token
+				localStorage.setItem('accessToken', result.access_token);
+				console.log('Token stored in localStorage');
+				
+				// 2. Redirect to onboarding
+				goto('/onboarding/personality');
+			} else {
+				errorMessage = 'Registration succeeded but no token was returned.';
+			}
+		} catch (error: any) {
+			// Errors (including 401, 500, etc.) are now caught here
+			console.error('Registration error:', error);
+			errorMessage = error.message || 'Failed to create user.';
+		} finally {
+			isLoading = false;
+		}
+	}
 </script>
 
 <main>
@@ -71,7 +62,7 @@
             <label for="password">Password</label>
             <input type="password" id="password" bind:value={password} required />
         </div>
-        <button type="submit">Register</button>
+        <Button type="submit" fullWidth={true}>Register</Button>
     </form>
     <p>Already have an account? <a href="/login">Login here</a></p>
 </main>

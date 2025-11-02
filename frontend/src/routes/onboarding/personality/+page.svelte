@@ -1,57 +1,46 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import Button from '$lib/components/atomic/Button.svelte';
+	import { api } from '$lib/services/api';
 
-	// Define the structure for Myers-Briggs traits
 	let traits = [
-		{ scale: 'Mind', name1: 'Introverted', name2: 'Extraverted', value: 50, order: 1 }, // value represents % Introverted
-		{ scale: 'Energy', name1: 'Intuitive', name2: 'Observant', value: 50, order: 2 }, // value represents % Intuitive
-		{ scale: 'Nature', name1: 'Feeling', name2: 'Thinking', value: 50, order: 3 }, // value represents % Feeling
-		{ scale: 'Tactics', name1: 'Judging', name2: 'Prospecting', value: 50, order: 4 }, // value represents % Judging
-		{ scale: 'Identity', name1: 'Turbulent', name2: 'Assertive', value: 50, order: 5 } // value represents % Turbulent
+		{ scale: 'Mind', name1: 'Introverted', name2: 'Extraverted', value: 50, order: 1 },
+		{ scale: 'Energy', name1: 'Intuitive', name2: 'Observant', value: 50, order: 2 },
+		{ scale: 'Nature', name1: 'Feeling', name2: 'Thinking', value: 50, order: 3 },
+		{ scale: 'Tactics', name1: 'Judging', name2: 'Prospecting', value: 50, order: 4 },
+		{ scale: 'Identity', name1: 'Turbulent', name2: 'Assertive', value: 50, order: 5 }
 	];
+
+	let errorMessage = '';
+	let isLoading = false;
 
 	async function handleSubmit() {
 		console.log('Submitting personality traits...');
+		isLoading = true;
+		errorMessage = '';
 
-		// Prepare data for the backend
 		const payloadTraits = traits.map((t) => ({
 			scale_name: t.scale,
-			// Determine the trait name based on the percentage value
 			trait_name: t.value >= 50 ? t.name1 : t.name2,
-			// Send the dominant percentage (e.g., if 70% Introverted, send 70; if 30% Introverted -> 70% Extraverted, send 70)
 			value: t.value >= 50 ? t.value : 100 - t.value,
 			display_order: t.order
 		}));
 
+		// We no longer send user_id, the token handles it
 		const payload = {
 			traits: payloadTraits
 		};
 
-		console.log('Personality Payload:', JSON.stringify(payload, null, 2));
-
 		try {
-			const token = localStorage.getItem('accessToken');
-			if (!token) {
-				goto('/login');
-				return;
-			}
-			const response = await fetch('http://localhost:8000/api/onboarding/personality', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-				body: JSON.stringify(payload)
-			});
-
-			if (response.ok) {
-				console.log('Personality traits saved.');
-				goto('/onboarding/principles'); // Go to the next step
-			} else {
-				const errorResult = await response.json();
-				alert(`Error saving personality: ${errorResult.detail || 'Unknown error'}`);
-				console.error('Personality save error:', errorResult);
-			}
-		} catch (error) {
-			alert('Network error saving personality.');
-			console.error('Network error:', error);
+			// Use the new api.post function
+			await api.post('/api/onboarding/personality', payload);
+			console.log('Personality traits saved.');
+			goto('/onboarding/principles'); // Go to the next step
+		} catch (error: any) {
+			errorMessage = `Error saving personality: ${error.message}`;
+			console.error('Personality save error:', error);
+		} finally {
+			isLoading = false;
 		}
 	}
 </script>
@@ -69,7 +58,7 @@
 			</div>
 		{/each}
 
-		<button type="submit">Next: Select Principles</button>
+		<Button type="submit" fullWidth={true}>Next: Select Principles</Button>
 	</form>
 </main>
 
@@ -98,19 +87,5 @@
 		margin-top: 0.3rem;
 		font-size: 0.9em;
 		color: #555;
-	}
-	button {
-		width: 100%;
-		padding: 10px;
-		background-color: #007bff;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		cursor: pointer;
-		font-size: 1rem;
-		margin-top: 1rem;
-	}
-	button:hover {
-		background-color: #0056b3;
 	}
 </style>
