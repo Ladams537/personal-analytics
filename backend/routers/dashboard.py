@@ -9,33 +9,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from database import get_db_connection
 
 router = APIRouter(
-    prefix="/api",
+    prefix="/api/dashboard",
     tags=["Dashboard"]
 )
-
-
-@router.get("/principles")
-def get_all_principles():
-    print("\n--- get_all_principles endpoint called ---")
-    conn = None
-    cur = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=DictCursor)
-        cur.execute("SELECT principle_id, name, \
-                    description FROM principles ORDER BY name;")
-        principles_rows = cur.fetchall()
-        principles = [dict(row) for row in principles_rows]
-        return principles
-    except psycopg2.Error as db_error:
-        print(f"DB Error: {db_error}")
-        raise HTTPException(status_code=500,
-                            detail="Database error fetching principles.")
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
 
 
 @router.get("")
@@ -49,7 +25,8 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
     dashboard_data: Dict[str, Any] = {
         "latest_checkin": None,
         "top_goal": None,
-        "daily_metrics": []
+        "daily_metrics": [],
+        "latest_insight": None
     }
 
     try:
@@ -91,6 +68,18 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
             top_goal = cur.fetchone()
             if top_goal:
                 dashboard_data["top_goal"] = dict(top_goal)
+
+            insight_sql = """
+                 SELECT insight_id, insight_type, content
+                 FROM insight
+                 WHERE user_id = %s
+                 ORDER BY generated_at DESC
+                 LIMIT 1;
+             """
+            cur.execute(insight_sql, (current_user_id,))
+            latest_insight = cur.fetchone()
+            if latest_insight:
+                dashboard_data["latest_insight"] = dict(latest_insight)
 
         return dashboard_data
 

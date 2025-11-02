@@ -8,6 +8,7 @@ DROP TABLE IF EXISTS routines CASCADE;
 DROP TABLE IF EXISTS user_principles CASCADE;
 DROP TABLE IF EXISTS principles CASCADE;
 DROP TABLE IF EXISTS personality_traits CASCADE;
+DROP TABLE IF EXISTS reflections CASCADE;
 DROP TABLE IF EXISTS insight CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
@@ -110,6 +111,15 @@ CREATE TABLE insight (
     is_read BOOLEAN DEFAULT FALSE
 );
 
+-- Journaling / Reflections Table
+CREATE TABLE reflections (
+    reflection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Optional: Add Indexes
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_personality_traits_user ON personality_traits(user_id);
@@ -120,6 +130,7 @@ CREATE INDEX idx_routine_steps_routine ON routine_steps(routine_id);
 CREATE INDEX idx_completed_steps_checkin ON completed_steps(checkin_id);
 CREATE INDEX idx_top_goal_user_date ON top_goal(user_id, goal_date);
 CREATE INDEX idx_insight_user ON insight(user_id);
+CREATE INDEX idx_reflections_user ON reflections(user_id, created_at);
 
 -- Enable UUID generation if not already enabled (Run once per database)
 -- CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; -- Alternative UUID generation

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import type { Writable } from 'svelte/store';
+	import Button from '$lib/components/atomic/Button.svelte';
+	import Card from '$lib/components/atomic/Card.svelte';
+	import { api } from '$lib/services/api';
 
 	// --- Define Types ---
 	type RoutineStep = {
@@ -20,57 +22,35 @@
 		steps: RoutineStep[];
 	};
 
-	// --- State Variables ---
 	let routines: Routine[] = [];
 	let isLoading = true;
 	let errorMessage = '';
-
-	// --- Form Variables ---
-	let newRoutineName = ''; // For creating a new parent routine
-
-	// For adding new steps (keyed by routine_id)
+	let newRoutineName = '';
 	let newStepNames: { [key: string]: string } = {};
 	let newStepDurations: { [key: string]: number } = {};
 
-	// --- Fetch Routines on Load ---
 	onMount(async () => {
 		await fetchRoutines();
 	});
 
 	async function fetchRoutines() {
 		isLoading = true;
-		const token = localStorage.getItem('accessToken');
-		if (!token) {
-			goto('/login');
-			return;
-		}
-
+		errorMessage = '';
 		try {
-			const response = await fetch('http://localhost:8000/api/routines', {
-				headers: { Authorization: `Bearer ${token}` }
+			// Use the new api.get function
+			routines = await api.get('/api/routines');
+			
+			// Initialize input fields
+			routines.forEach((r) => {
+				newStepNames[r.routine_id] = '';
+				newStepDurations[r.routine_id] = 0;
 			});
-
-			if (response.ok) {
-				routines = await response.json();
-				// Initialize input fields for new steps
-				routines.forEach((r) => {
-					newStepNames[r.routine_id] = '';
-					newStepDurations[r.routine_id] = 0;
-				});
-			} else if (response.status === 401) {
-				goto('/login');
-			} else {
-				const err = await response.json();
-				errorMessage = err.detail || 'Failed to load routines.';
-			}
-		} catch (error) {
-			errorMessage = 'Network error. Please try again.';
+		} catch (error: any) {
+			errorMessage = error.message || 'Failed to load routines.';
 		} finally {
 			isLoading = false;
 		}
 	}
-
-	// --- Form Handlers ---
 
 	async function handleCreateRoutine() {
 		if (!newRoutineName.trim()) {
@@ -78,86 +58,48 @@
 			return;
 		}
 
-		const token = localStorage.getItem('accessToken');
-		if (!token) {
-			goto('/login');
-			return;
-		}
-
 		try {
-			const response = await fetch('http://localhost:8000/api/routines', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify({ routine_name: newRoutineName })
+			// Use the new api.post function
+			const newRoutine = await api.post('/api/routines', {
+				routine_name: newRoutineName
 			});
 
-			if (response.status === 201) {
-				const newRoutine = await response.json();
-				// Add the new routine (with empty steps) to our list
-				routines = [...routines, { ...newRoutine, steps: [] }];
-				// Initialize its form fields
-				newStepNames[newRoutine.routine_id] = '';
-				newStepDurations[newRoutine.routine_id] = 0;
-				newRoutineName = ''; // Clear input
-			} else {
-				const err = await response.json();
-				alert(`Error creating routine: ${err.detail}`);
-			}
-		} catch (error) {
-			alert('Network error creating routine.');
+			routines = [...routines, { ...newRoutine, steps: [] }];
+			newStepNames[newRoutine.routine_id] = '';
+			newStepDurations[newRoutine.routine_id] = 0;
+			newRoutineName = ''; // Clear input
+		} catch (error: any) {
+			alert(`Error creating routine: ${error.message}`);
 		}
 	}
 
 	async function handleAddStep(routineId: string) {
 		const stepName = newStepNames[routineId];
 		const duration = newStepDurations[routineId];
-		const token = localStorage.getItem('accessToken');
 
 		if (!stepName.trim()) {
 			alert('Please enter a step name.');
 			return;
 		}
-		if (!token) {
-			goto('/login');
-			return;
-		}
 
-		// Find the routine to calculate the next step_order
 		const routine = routines.find((r) => r.routine_id === routineId);
 		if (!routine) return;
 		const nextStepOrder = routine.steps.length + 1;
 
 		try {
-			const response = await fetch(`http://localhost:8000/api/routines/${routineId}/steps`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify({
-					step_name: stepName,
-					target_duration: duration || null, // Send null if 0
-					step_order: nextStepOrder
-				})
+			// Use the new api.post function
+			const newStep = await api.post(`/api/routines/${routineId}/steps`, {
+				step_name: stepName,
+				target_duration: duration || null,
+				step_order: nextStepOrder
 			});
 
-			if (response.ok) {
-				const newStep = await response.json();
-				// Add the new step to the correct routine in our state
-				routine.steps = [...routine.steps, newStep];
-				routines = routines; // Trigger Svelte reactivity
-				// Clear inputs for that routine
-				newStepNames[routineId] = '';
-				newStepDurations[routineId] = 0;
-			} else {
-				const err = await response.json();
-				alert(`Error adding step: ${err.detail}`);
-			}
-		} catch (error) {
-			alert('Network error adding step.');
+			routine.steps = [...routine.steps, newStep];
+			routines = routines; // Trigger reactivity
+			newStepNames[routineId] = '';
+			newStepDurations[routineId] = 0;
+		} catch (error: any) {
+			alert(`Error adding step: ${error.message}`);
 		}
 	}
 </script>

@@ -97,3 +97,16 @@ class Routine(BaseModel):
     is_active: bool
     created_at: datetime
     steps: List[RoutineStep] = []
+
+
+class ReflectionCreate(BaseModel):
+    title: str
+    body: str
+
+
+class Reflection(BaseModel):
+    reflection_id: uuid.UUID
+    user_id: uuid.UUID
+    title: str
+    body: str
+    created_at: datetime
