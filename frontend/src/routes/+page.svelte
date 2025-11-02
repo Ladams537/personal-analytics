@@ -197,24 +197,22 @@
 				{:else}
 				<p>No top goal set for today.</p>
 			{/if}
-		</Card>
+		</Card> -->
 
 		<Card>
 			{#snippet header()}
-				<h2>Latest Gratitude Entry</h2>
+				<h2>A Past Gratitude</h2>
 			{/snippet}
 
-			{#if dashboardData.latest_checkin && dashboardData.latest_checkin.gratitude_entry}
-				<p>"{dashboardData.latest_checkin.gratitude_entry}"</p>
-				<small>From: {dashboardData.latest_checkin.checkin_date}</small>
-			{:else if dashboardData.latest_checkin}
-				<p>No gratitude entry for {dashboardData.latest_checkin.checkin_date}.</p>
+			{#if dashboardData.random_gratitude}
+				<p>"{dashboardData.random_gratitude.gratitude_entry}"</p>
+				<small>From: {dashboardData.random_gratitude.checkin_date}</small>
 			{:else}
-				<p>No check-in data found yet.</p>
+				<p>No gratitude entries found yet. Add one in your next check-in!</p>
 			{/if}
-		</Card>
+		</Card> 
 
-		<Card>
+		<!-- <Card>
 			{#snippet header()}
 				<h2>Latest Principle Alignment</h2>
 			{/snippet}

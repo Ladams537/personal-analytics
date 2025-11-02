@@ -26,7 +26,8 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
         "latest_checkin": None,
         "top_goal": None,
         "daily_metrics": [],
-        "latest_insight": None
+        "latest_insight": None,
+        "random_gratitude": None
     }
 
     try:
@@ -80,6 +81,20 @@ async def get_dashboard_data(current_user_id: uuid.UUID =
             latest_insight = cur.fetchone()
             if latest_insight:
                 dashboard_data["latest_insight"] = dict(latest_insight)
+
+            gratitude_sql = """
+                SELECT gratitude_entry, checkin_date
+                FROM daily_checkins
+                WHERE user_id = %s
+                AND gratitude_entry IS NOT NULL
+                AND gratitude_entry != ''
+                ORDER BY RANDOM()
+                LIMIT 1;
+            """
+            cur.execute(gratitude_sql, (current_user_id,))
+            random_gratitude = cur.fetchone()
+            if random_gratitude:
+                dashboard_data["random_gratitude"] = dict(random_gratitude)
 
         return dashboard_data
 
