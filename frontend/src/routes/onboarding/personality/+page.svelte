@@ -32,8 +32,8 @@
 		};
 
 		try {
-			// Use the new api.post function
-			await api.post('/api/onboarding/personality', payload);
+			// Use the new api.put function
+			await api.put('/api/settings/personality', payload);
 			console.log('Personality traits saved.');
 			goto('/onboarding/principles'); // Go to the next step
 		} catch (error: any) {

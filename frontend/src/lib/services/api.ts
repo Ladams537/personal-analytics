@@ -84,7 +84,16 @@ export const api = {
 			method: 'PATCH',
 			body: JSON.stringify(body)
 		});
-	}
+	},
 
-	// You can add del, put, etc. here later
+	put: (endpoint: string, body: object) => {
+		return request(endpoint, {
+			method: 'PUT',
+			body: JSON.stringify(body)
+		});
+	},
+
+	delete: (endpoint: string) => {
+		return request(endpoint, { method: 'DELETE' });
+	}
 };

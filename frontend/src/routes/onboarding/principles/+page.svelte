@@ -72,8 +72,8 @@
 		};
 
 		try {
-			// Use the new api.post function
-			await api.post('/api/onboarding/principles', payload);
+			// Use the new api.put function
+			await api.put('/api/settings/principles', payload);
 			
 			console.log('User principles saved.');
 			alert('Onboarding complete!');

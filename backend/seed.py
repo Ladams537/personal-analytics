@@ -11,7 +11,7 @@ from database import get_db_connection
 
 # TODO: Paste the USER_ID (as a string) you want to generate data for.
 # (Get this from your 'users' table in DBeaver)
-USER_ID_TO_POPULATE = "f0133bed-850e-4a04-a978-926525a28c6f"  # <--- EDIT THIS
+USER_ID_TO_POPULATE = "4b749f1c-cac0-46cc-87e9-ab1e9177417a"  # <--- EDIT THIS
 
 # TODO: How many days of data do you want to generate?
 NUMBER_OF_DAYS_TO_GENERATE = 60
@@ -19,9 +19,13 @@ NUMBER_OF_DAYS_TO_GENERATE = 60
 # TODO: Add the 'routine_steps' you want to track.
 # (Get 'step_id's from your 'routine_steps' table in DBeaver)
 ROUTINE_STEPS_TO_POPULATE = [
-    {"step_id": "uuid-of-your-run-step", "target_duration": 15},
-    {"step_id": "uuid-of-your-read-step", "target_duration": 10},
-    {"step_id": "uuid-of-your-meditate-step", "target_duration": 5}
+    # {"step_id": "624a717b-bfa7-486a-a80e-2c336b30bb9b", "target_duration": 15},
+    # {"step_id": "b5325c7b-5881-47a0-9a63-d9ef8797a0f5", "target_duration": 60},
+    # {"step_id": "ed08881f-7127-4c2e-b1d1-bfba65395dcb", "target_duration": 5},
+    # {"step_id": "6ab5c55a-86cc-4ea8-b3ac-bdd2ec9b3cdf", "target_duration": 10},
+    # {"step_id": "9438891d-ab6e-4a18-8bb8-38cd9e60c9a1", "target_duration": 60},
+    # {"step_id": "43c695e1-841d-4612-b98e-077ef5501b61", "target_duration": 10},
+    # {"step_id": "aa8114d6-a095-4fbc-89f1-67af81800c87", "target_duration": 10}
 ]  # <--- EDIT THIS
 
 # These are the metric names your frontend check-in form uses

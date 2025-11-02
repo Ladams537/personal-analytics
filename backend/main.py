@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import onboarding, \
+from routers import settings, \
     checkins, \
     routines, \
     goals, \
@@ -29,7 +29,7 @@ app.add_middleware(
 
 
 app.include_router(auth.router)
-app.include_router(onboarding.router)
+app.include_router(settings.router)
 app.include_router(checkins.router)
 app.include_router(routines.router)
 app.include_router(goals.router)

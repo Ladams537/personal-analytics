@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import Button from '$lib/components/atomic/Button.svelte';
 	import Card from '$lib/components/atomic/Card.svelte';
 	import LineChart from '$lib/components/charts/LineChart.svelte';
 	import DoughnutChart from '$lib/components/charts/DoughnutChart.svelte';
@@ -125,18 +123,10 @@
 		if (!dashboardData || !dashboardData.daily_metrics) return [];
 		return dashboardData.daily_metrics.filter((m: any) => m.metric_type === type);
 	}
-
-	// Logout function (no change)
-	function logout() {
-		localStorage.removeItem('accessToken');
-		console.log('Token removed, logging out.');
-		goto('/login');
-	}
 </script>
 
 <main>
 	<h1>Your Dashboard</h1>
-	<Button type="button" variant="danger" onclick={logout}>Logout</Button> 
 	{#if isLoading}
 		<p>Loading...</p>
 	{:else if errorMessage}

@@ -121,7 +121,7 @@
 		{#snippet header()}
 			<h2>New Reflection</h2>
 		{/snippet}
-		<form on:submit|preventDefault={handleSubmit}>
+		<form onsubmit={handleSubmit}>
 			<div class="form-group">
 				<label for="title">Title</label>
 				<input
