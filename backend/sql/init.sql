@@ -1,4 +1,6 @@
 -- Drop tables in the correct dependency order
+DROP TABLE IF EXISTS time_log_entries CASCADE;
+DROP TABLE IF EXISTS tasks CASCADE;
 DROP TABLE IF EXISTS top_goal CASCADE;
 DROP TABLE IF EXISTS completed_steps CASCADE;
 DROP TABLE IF EXISTS routine_steps CASCADE;
@@ -111,6 +113,26 @@ CREATE TABLE insight (
     is_read BOOLEAN DEFAULT FALSE
 );
 
+-- Focus Tracker Tables
+CREATE TABLE tasks (
+    task_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    task_date DATE NOT NULL,
+    task_description TEXT NOT NULL,
+    priority INTEGER, -- For the 1, 2, 3 weighting
+    is_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTPTZ DEFAULT NOW(),
+    UNIQUE(user_id, task_date, task_description) -- Prevent duplicate tasks on the same day
+);
+
+CREATE TABLE time_log_entries (
+    entry_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_id UUID NOT NULL REFERENCES tasks(task_id) ON DELETE CASCADE,
+    start_time TIMESTAMPTZ NOT NULL,
+    end_time TIMESTPTZ, -- Can be NULL if the timer is still running
+    distractions INTEGER DEFAULT 0 -- Counter for distractions
+);
+
 -- Journaling / Reflections Table
 CREATE TABLE reflections (
     reflection_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,6 +152,8 @@ CREATE INDEX idx_routine_steps_routine ON routine_steps(routine_id);
 CREATE INDEX idx_completed_steps_checkin ON completed_steps(checkin_id);
 CREATE INDEX idx_top_goal_user_date ON top_goal(user_id, goal_date);
 CREATE INDEX idx_insight_user ON insight(user_id);
+CREATE INDEX idx_tasks_user_date ON tasks(user_id, task_date);
+CREATE INDEX idx_time_log_task ON time_log_entries(task_id);
 CREATE INDEX idx_reflections_user ON reflections(user_id, created_at);
 
 -- Enable UUID generation if not already enabled (Run once per database)
