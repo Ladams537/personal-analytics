@@ -8,6 +8,7 @@ from routers import onboarding, \
     goals, \
     dashboard, \
     principles, \
+    charts, \
     insights, \
     reflections
 import auth
@@ -36,3 +37,4 @@ app.include_router(dashboard.router)
 app.include_router(principles.router)
 app.include_router(insights.router)
 app.include_router(reflections.router)
+app.include_router(charts.router)

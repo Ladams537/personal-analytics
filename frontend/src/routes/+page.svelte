@@ -3,11 +3,17 @@
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/atomic/Button.svelte';
 	import Card from '$lib/components/atomic/Card.svelte';
-	import { api } from '$lib/services/api'; // <-- IMPORT YOUR NEW API SERVICE
+	import LineChart from '$lib/components/charts/LineChart.svelte';
+	import DoughnutChart from '$lib/components/charts/DoughnutChart.svelte';
+	import BarChart from '$lib/components/charts/BarChart.svelte';
+	import { api } from '$lib/services/api';
 
 	let dashboardData: any = null;
 	let isLoading = true;
 	let errorMessage = '';
+	let alignmentChartData: any = null;
+	let timeChartData: any = null;
+	let dailyRatingChartData: any = null;
 
 	onMount(async () => {
 		isLoading = true;
@@ -17,6 +23,72 @@
 			dashboardData = await api.get('/api/dashboard');
 			console.log('Dashboard Data:', dashboardData);
 			// --- ALL ERROR HANDLING (401, etc.) IS NOW IN THE SERVICE ---
+			const chartData = await api.get('/api/charts/principle-alignment');
+			console.log('Chart Data:', chartData);
+
+			// Format the data for Chart.js
+			alignmentChartData = {
+				labels: chartData.labels, // The dates
+				datasets: [
+					{
+						label: 'Principle Alignment',
+						data: chartData.data, // The scores
+						fill: false,
+						borderColor: 'rgb(75, 192, 192)',
+						tension: 0.1
+					}
+				]
+			};
+
+			// --- 3. Format data for Time Allocation Chart ---
+			if (dashboardData?.daily_metrics) {
+				const timeMetrics = getMetricsByType('Time Allocation');
+				if (timeMetrics.length > 0) {
+					timeChartData = {
+						labels: timeMetrics.map((m: any) => m.metric_name), // e.g., ['Work', 'Family', ...]
+						datasets: [
+							{
+								label: 'Time Allocation',
+								data: timeMetrics.map((m: any) => m.value), // e.g., [50, 10, ...]
+								backgroundColor: [
+									'rgba(255, 99, 132, 0.8)',
+									'rgba(54, 162, 235, 0.8)',
+									'rgba(255, 206, 86, 0.8)',
+									'rgba(75, 192, 192, 0.8)',
+									'rgba(153, 102, 255, 0.8)',
+									'rgba(255, 159, 64, 0.8)'
+								],
+								hoverOffset: 4
+							}
+						]
+					};
+				}
+			}
+			// --- NEW: Daily Ratings (Bar) ---
+				const ratingMetrics = getMetricsByType('Daily Rating');
+				if (ratingMetrics.length > 0) {
+					dailyRatingChartData = {
+						labels: ratingMetrics.map((r: any) => r.metric_name), // e.g., ['Productivity', 'Focus', 'Fun']
+						datasets: [
+							{
+								label: 'Rating (1-10)',
+								data: ratingMetrics.map((r: any) => r.value), // e.g., [8, 7, 5]
+								backgroundColor: [
+									'rgba(75, 192, 192, 0.7)',
+									'rgba(153, 102, 255, 0.7)',
+									'rgba(255, 159, 64, 0.7)'
+								],
+								borderColor: [
+									'rgb(75, 192, 192)',
+									'rgb(153, 102, 255)',
+									'rgb(255, 159, 64)'
+								],
+								borderWidth: 1
+							}
+						]
+					};
+				}
+			// ------------------------------------------------
 		} catch (error: any) {
 			errorMessage = error.message || 'Failed to load dashboard data.';
 		} finally {
@@ -70,7 +142,45 @@
 	{:else if errorMessage}
 		<p class="error">{errorMessage}</p>
 	{:else if dashboardData}
-		{#if dashboardData.latest_insight}
+		<Card>
+			{#snippet header()}
+				<h2>Principle Alignment (Last 60 Days)</h2>
+			{/snippet}
+
+			{#if alignmentChartData}
+				<LineChart chartData={alignmentChartData} />
+			{:else}
+				<p>Not enough data to display chart.</p>
+			{/if}
+		</Card>
+
+		<Card>
+			{#snippet header()}
+				<h2>Latest Time Allocation</h2>
+			{/snippet}
+			{#if timeChartData}
+				<DoughnutChart chartData={timeChartData} />
+			{:else if dashboardData.latest_checkin}
+				<p>No time allocation data recorded for this day.</p>
+			{:else}
+				<p>No check-in data found yet.</p>
+			{/if}
+		</Card>
+
+		<Card>
+			{#snippet header()}
+				<h2>Latest Daily Ratings</h2>
+			{/snippet}
+			{#if dailyRatingChartData}
+				<BarChart chartData={dailyRatingChartData} />
+			{:else if dashboardData.latest_checkin}
+				<p>No daily ratings recorded for this day.</p>
+			{:else}
+				<p>No check-in data found yet.</p>
+			{/if}
+		</Card>
+
+		<!-- {#if dashboardData.latest_insight}
             <Card>
                 {#snippet header()}
                     <h2>💡 Daily Tidbit</h2>
@@ -78,7 +188,7 @@
                 <p class="insight-content">"{dashboardData.latest_insight.content}"</p>
                 </Card>
         {/if}
-		
+
 		<Card>
 			{#snippet header()}
 				<h2>Today's Top Goal</h2>
@@ -168,7 +278,7 @@
 			{:else}
 				<p>No check-in data found yet.</p>
 			{/if}
-		</Card>
+		</Card> -->
 	{:else}
 		<p>No dashboard data available.</p>
 	{/if}

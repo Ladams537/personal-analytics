@@ -110,3 +110,8 @@ class Reflection(BaseModel):
     title: str
     body: str
     created_at: datetime
+
+
+class ChartData(BaseModel):
+    labels: List[date]
+    data: List[int]
